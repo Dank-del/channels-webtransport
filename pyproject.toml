@@ -1,6 +1,6 @@
 [project]
 name = "channels-webtransport"
-version = "0.1.0"
+version = "0.0.1"
 description = "Experimental WebTransport support for Django Channels"
 readme = "README.md"
 authors = [
