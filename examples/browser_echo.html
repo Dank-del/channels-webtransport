@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8">
+  <title>channels-webtransport echo</title>
+  <body>
+    <button id="connect">Connect and echo</button>
+    <pre id="log"></pre>
+    <script>
+      const log = (message) => {
+        document.querySelector("#log").textContent += `${message}\n`;
+      };
+
+      document.querySelector("#connect").addEventListener("click", async () => {
+        // Replace with the SHA-256 DER certificate hash. One way to print it is:
+        // openssl x509 -in certs/localhost.crt -outform der |
+        //   openssl dgst -sha256 -binary | base64
+        const certificateHashBase64 = "REPLACE_ME";
+        const hash = Uint8Array.from(atob(certificateHashBase64), (c) => c.charCodeAt(0));
+        const transport = new WebTransport("https://localhost:4433/wt/echo/", {
+          serverCertificateHashes: [{ algorithm: "sha-256", value: hash }],
+        });
+
+        await transport.ready;
+        log("connected");
+
+        const writer = transport.datagrams.writable.getWriter();
+        const reader = transport.datagrams.readable.getReader();
+        await writer.write(new TextEncoder().encode("hello over a datagram"));
+        const { value } = await reader.read();
+        log(new TextDecoder().decode(value));
+
+        const stream = await transport.createBidirectionalStream();
+        const streamWriter = stream.writable.getWriter();
+        await streamWriter.write(new TextEncoder().encode("hello over a stream"));
+        await streamWriter.close();
+        const streamReader = stream.readable.getReader();
+        const chunks = [];
+        while (true) {
+          const { value: chunk, done } = await streamReader.read();
+          if (done) break;
+          chunks.push(...chunk);
+        }
+        log(new TextDecoder().decode(new Uint8Array(chunks)));
+        await transport.close();
+      });
+    </script>
+  </body>
+</html>
